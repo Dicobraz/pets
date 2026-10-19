@@ -1,0 +1,10 @@
+[package]
+name = "pets-commands"
+description = "Реестр команд приложения: id, хоткеи по умолчанию, контекст — без UI"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror = "2"
