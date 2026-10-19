@@ -13,4 +13,4 @@
 **Результат.** Простой 3,0 → 0,0 %, пробуждения потока vsync 158 → 1–3 в секунду (Intel, 144 Гц).
 
 **Откуда.** Postman S1-02, патч `third_party/gpui-pre-windows` (`vsync.rs`, `platform.rs`, `window.rs`,
-`events.rs`); переезжает в `pets-gpui-windows`.
+`events.rs`); теперь — `crates/pets-gpui-windows`.

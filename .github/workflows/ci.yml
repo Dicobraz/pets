@@ -23,3 +23,15 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Тесты
         run: cargo test --workspace
+
+  gpui-windows:
+    name: gpui-windows (патч gpui)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/pets-gpui-windows
+      - name: Тесты наших правок
+        run: cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support vsync

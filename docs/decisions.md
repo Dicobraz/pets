@@ -2,6 +2,12 @@
 
 Новое решение — сверху, с датой.
 
+## 2026-10-19. Патч gpui в pets
+
+Патч Windows-платформы gpui из Postman (`third_party/gpui-pre-windows`) — в `crates/pets-gpui-windows`.
+Имя пакета прежнее (`gpui-pre-windows`, Apache-2.0, снимок Zed) — для `[patch]`; каталог вне рабочей
+области `pets`, со своим `[workspace]` и `Cargo.lock`; CI — отдельная задача с тестами наших правок.
+
 ## 2026-10-19. Репозиторий pets, gpui для всех
 
 1. Интерфейс всех приложений Pets — gpui (gpui-kit / gpui-pre с нашими патчами). egui отвергнут и в общий

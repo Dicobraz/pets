@@ -19,4 +19,4 @@
 `resize-check.ps1` (разворачивание, сворачивание, `SetWindowPos`, доля чёрных пикселей; режим «с экрана»
 показывает то, что видит пользователь) и бенч.
 
-**Откуда.** Postman S1-04, патч `third_party/gpui-pre-windows`; переезжает в `pets-gpui-windows`.
+**Откуда.** Postman S1-04, патч `third_party/gpui-pre-windows`; теперь — `crates/pets-gpui-windows`.
