@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# Чужой код (снимок Zed) со своим Cargo.lock и стилем: подключается приложениями через [patch], проверяется отдельно.
+exclude = ["crates/pets-gpui-windows"]
 
 [workspace.package]
 edition = "2024"
