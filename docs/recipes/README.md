@@ -12,3 +12,4 @@
 | [Хоткеи в любой раскладке](hotkeys-any-layout.md) | любое | Postman S1-01, Урфин |
 | [Бенч и сравнение](bench.md) | любое | Postman S1-02…S1-06 |
 | [Профиль без прав администратора](profiling.md) | Windows | Postman S1-02 |
+| [Гигиена диска](disk-hygiene.md) | любое, Windows | H-01 |
