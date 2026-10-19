@@ -10,8 +10,10 @@ param(
 
 # `-File` passes "a,b" as one string: split lists here.
 $Prefixes = $Prefixes | ForEach-Object { $_ -split ',' } | Where-Object { $_ }
+# %TEMP% may be an 8.3 short path (C:\Users\A81F7~1.ANT\...): Remove-Item then fails - use the full path.
+$temp = (Get-Item $env:TEMP).FullName
 $cutoff = (Get-Date).AddDays(-$Days)
-$items = Get-ChildItem $env:TEMP -Force -ErrorAction SilentlyContinue | Where-Object {
+$items = Get-ChildItem $temp -Force -ErrorAction SilentlyContinue | Where-Object {
   $name = $_.Name
   ($Prefixes | Where-Object { $name -like "$_-*" }) -or ($name -like ".tmp*" -and $_.LastWriteTime -lt $cutoff)
 }
@@ -23,5 +25,5 @@ foreach ($i in $items) {
 }
 "Total: {0} items, {1:N1} MB" -f @($items).Count, ($total / 1MB)
 if (-not $Apply) { "Run with -Apply to delete."; exit 0 }
-foreach ($i in $items) { Remove-Item $i.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+foreach ($i in $items) { Remove-Item -LiteralPath $i.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 "Deleted."

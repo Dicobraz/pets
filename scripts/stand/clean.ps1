@@ -37,7 +37,8 @@ foreach ($repo in $Repos) {
   Get-ChildItem $t -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^[a-z0-9_]+-[a-z0-9_]+-[a-z0-9_]+' } | ForEach-Object { $candidates += $_.FullName }
 }
 if ($Testdata) { foreach ($a in $Apps) { $candidates += Join-Path $env:LOCALAPPDATA "Pets\testdata\$a" } }
-Get-ChildItem $env:TEMP -Force -ErrorAction SilentlyContinue | Where-Object { $n = $_.Name; $Apps | Where-Object { $n -like "$_-*" } } | ForEach-Object { $candidates += $_.FullName }
+# %TEMP% may be an 8.3 short path: use the full one.
+Get-ChildItem (Get-Item $env:TEMP).FullName -Force -ErrorAction SilentlyContinue | Where-Object { $n = $_.Name; $Apps | Where-Object { $n -like "$_-*" } } | ForEach-Object { $candidates += $_.FullName }
 
 $total = 0
 $found = @()
@@ -50,5 +51,5 @@ foreach ($c in ($candidates | Select-Object -Unique)) {
 }
 "Total: {0:N2} GB" -f ($total / 1GB)
 if (-not $Apply) { "Run with -Apply to delete."; exit 0 }
-foreach ($c in $found) { Remove-Item $c -Recurse -Force -ErrorAction SilentlyContinue }
+foreach ($c in $found) { Remove-Item -LiteralPath $c -Recurse -Force -ErrorAction SilentlyContinue }
 "Deleted."
