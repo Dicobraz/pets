@@ -2,6 +2,16 @@
 
 Новое решение — сверху, с датой.
 
+## 2026-10-20. pets-i18n, pets-shell, pets-ui (Postman S2-06)
+
+Первые версии крейтов базиса, потребитель — Postman. API:
+- `pets-i18n`: `init(&[&[Resource]], lang)`, `tr!`, `set_language`, `epoch`; `check` и `raw_strings` — для
+  тестов приложения. Тексты `.ftl` — в приложении и в библиотеках (`pets_ui::FTL`), язык `auto` — язык ОС.
+- `pets-shell`: `init_logging(app, env_var)` (ERROR и паники — ещё и в журнал Windows «Приложение»), `fatal`,
+  `single_instance(app, args)` → `First(Listener)` / `Second`.
+- `pets-ui`: `Toasts` (view gpui) — тосты справа сверху без фокуса, история панелью; уровни `Level`.
+- Журнал (`tracing`) пишется по-английски; по-русски — только тексты интерфейса через Fluent.
+
 ## 2026-10-19. Патч gpui в pets
 
 Патч Windows-платформы gpui из Postman (`third_party/gpui-pre-windows`) — в `crates/pets-gpui-windows`.
