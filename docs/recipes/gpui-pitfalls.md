@@ -48,6 +48,9 @@
 - Кэш поддерева: дочерняя view `entity.cached(StyleRefinement::default().size_full())` — кадр без `notify`
   этой view повторяется без раскладки и paint. `notify` дочерней view изнутри `render` родителя действует
   только со следующего кадра (`draw_phase` ≠ None): изменилась — в этом кадре вставить её без `cached`.
+- Кэш **не повторяет** `WindowControlArea` (`window_control_hitboxes` нет в `reuse_paint`/`reuse_prepaint`
+  gpui-pre 0.3.9): закэшированный заголовок теряет перетаскивание, «─ □ ✕» и Snap. Кэшировать только
+  содержимое заголовка, кнопки и зону `Drag` — вне кэшируемой view.
 - `GetThreadTimes` квантован тиком планировщика (~15,6 мс): CPU на кадр так не измерить, только за фазу.
 - Профиль без WPT: сэмплер в процессе — `SuspendThread` + `GetThreadContext` + `RtlVirtualUnwind`, имена —
   dbghelp `SymFromAddrW` (путь поиска — папка exe, иначе PDB своего exe не найдётся). `CONTEXT` выровнять по
