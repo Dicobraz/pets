@@ -42,6 +42,12 @@
   ~9 % paint. Каждая строка из 4–5 flex-`div` с текстом (текст меряется taffy, иногда не раз) — дорого.
   Длинные однородные списки рисовать **одним своим `Element`**: фон — `paint_quad`, текст —
   `text_system().shape_line` + `paint` (кэш строк gpui), клики — по координате на контейнере.
+- gpui по умолчанию ограничивает **неактивное** окно 30 кадр/с (`WindowOptions::inactive_frame_interval` =
+  33 мс): владелец переключился в другое окно — замер «вдруг» 34 мс на кадр. Бенч: `inactive_frame_interval:
+  None`, `focus: false`, `display_id` — неосновной экран, чтобы не мешать владельцу.
+- Кэш поддерева: дочерняя view `entity.cached(StyleRefinement::default().size_full())` — кадр без `notify`
+  этой view повторяется без раскладки и paint. `notify` дочерней view изнутри `render` родителя действует
+  только со следующего кадра (`draw_phase` ≠ None): изменилась — в этом кадре вставить её без `cached`.
 - `GetThreadTimes` квантован тиком планировщика (~15,6 мс): CPU на кадр так не измерить, только за фазу.
 - Профиль без WPT: сэмплер в процессе — `SuspendThread` + `GetThreadContext` + `RtlVirtualUnwind`, имена —
   dbghelp `SymFromAddrW` (путь поиска — папка exe, иначе PDB своего exe не найдётся). `CONTEXT` выровнять по
