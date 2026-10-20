@@ -1,0 +1,18 @@
+[package]
+name = "pets-i18n"
+description = "Тексты интерфейса на Fluent: вшитые наборы .ftl приложения и библиотек, язык на лету, проверки — без UI"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+fluent-bundle.workspace = true
+fluent-syntax.workspace = true
+unic-langid.workspace = true
+sys-locale.workspace = true
+
+[lints]
+workspace = true

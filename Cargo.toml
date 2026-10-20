@@ -10,6 +10,29 @@ version = "0.1.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Dicobraz/pets"
 
+[workspace.dependencies]
+pets-i18n = { path = "crates/pets-i18n" }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std", "tracing-log", "ansi"] }
+fluent-bundle = "0.16"
+fluent-syntax = "0.12"
+unic-langid = "0.9"
+sys-locale = "0.3"
+windows-sys = "0.61"
+# Версия как у приложений: одна сборка gpui на рабочую область потребителя.
+gpui-kit = "=0.7.3"
+
+# «Не падать»: вне тестов нет unwrap/expect/panic!; в тестах разрешены (clippy.toml).
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+# Свой патч Windows-платформы gpui — и здесь (pets-ui), как у приложений.
+[patch.crates-io]
+gpui-pre-windows = { path = "crates/pets-gpui-windows" }
+
 # Гигиена диска (H-01): номера строк в стектрейсах, PDB в разы меньше; без символов у зависимостей.
 [profile.dev]
 debug = "line-tables-only"

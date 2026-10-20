@@ -13,3 +13,6 @@
 | [Бенч и сравнение](bench.md) | любое | Postman S1-02…S1-06 |
 | [Профиль без прав администратора](profiling.md) | Windows | Postman S1-02 |
 | [Гигиена диска](disk-hygiene.md) | любое, Windows | H-01 |
+| [Тексты через Fluent](i18n.md) | любое | Postman S2-06, идея — Урфин |
+| [Жизнь процесса](process-shell.md) | любое, Windows | Postman S2-06 |
+| [Тосты вместо модальных окон](toasts.md) | любое | Postman S2-06 |
