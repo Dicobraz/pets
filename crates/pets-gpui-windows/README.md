@@ -13,7 +13,7 @@ gpui-pre-windows = { git = "https://github.com/Dicobraz/pets", rev = "<комм�
 
 | Патч | Файлы | Рецепт |
 |---|---|---|
-| Шейдеры встроены в exe, компилируются при запуске (сборка без fxc.exe, без путей машины сборки) | `build.rs`, `directx_renderer.rs` | — |
+| Шейдеры компилируются при сборке через `D3DCompile` в `build.rs` (без fxc.exe, без путей машины сборки) и вшиваются байткодом; при запуске — 0,4 мс вместо ~250 мс. Сборка не на Windows — компиляция при запуске (`cfg(shaders_runtime)`) | `build.rs`, `directx_renderer.rs`, `Cargo.toml` | — |
 | Кадры по запросу: поток vsync спит без запросов кадра | `vsync.rs`, `platform.rs`, `window.rs`, `events.rs` | `docs/recipes/frames-on-demand.md` |
 | Живой ресайз: кадр на `WM_SIZE` в цикле перетаскивания, swapchain окна с растяжением, DirectComposition выключена по умолчанию (`GPUI_DISABLE_DIRECT_COMPOSITION=0` — включить) | `events.rs`, `window.rs`, `directx_renderer.rs`, `platform.rs` | `docs/recipes/live-resize.md` |
 | Принудительный WARP (программный Direct3D): `GPUI_FORCE_WARP=1` — устройство создаётся на `EnumWarpAdapter`, без перебора GPU; читается раз за процесс, пересоздание после потери устройства — тоже на WARP | `directx_devices.rs` | — |

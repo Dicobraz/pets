@@ -1699,7 +1699,7 @@ const BUFFER_COUNT: usize = 3;
 pub(crate) mod shader_resources {
     use anyhow::Result;
 
-    #[cfg(all())]
+    #[cfg(shaders_runtime)]
     use windows::{
         Win32::Graphics::Direct3D::{
             Fxc::{D3DCOMPILE_OPTIMIZATION_LEVEL3, D3DCompile},
@@ -1730,17 +1730,17 @@ pub(crate) mod shader_resources {
     pub(crate) struct RawShaderBytes<'t> {
         inner: &'t [u8],
 
-        #[cfg(all())]
+        #[cfg(shaders_runtime)]
         _blob: ID3DBlob,
     }
 
     impl<'t> RawShaderBytes<'t> {
         pub(crate) fn new(module: ShaderModule, target: ShaderTarget) -> Result<Self> {
-            #[cfg(any())]
+            #[cfg(not(shaders_runtime))]
             {
                 Ok(Self::from_bytes(module, target))
             }
-            #[cfg(all())]
+            #[cfg(shaders_runtime)]
             {
                 let blob = build_shader_blob(module, target)?;
                 let inner = unsafe {
@@ -1757,7 +1757,7 @@ pub(crate) mod shader_resources {
             self.inner
         }
 
-        #[cfg(any())]
+        #[cfg(not(shaders_runtime))]
         fn from_bytes(module: ShaderModule, target: ShaderTarget) -> Self {
             let bytes = match module {
                 ShaderModule::Quad => match target {
@@ -1801,7 +1801,7 @@ pub(crate) mod shader_resources {
         }
     }
 
-    #[cfg(all())]
+    #[cfg(shaders_runtime)]
     pub(super) fn build_shader_blob(entry: ShaderModule, target: ShaderTarget) -> Result<ID3DBlob> {
         unsafe {
             // Postman: исходники шейдеров встроены в exe (кросс-сборка без fxc.exe),
@@ -1862,10 +1862,11 @@ pub(crate) mod shader_resources {
         }
     }
 
-    #[cfg(any())]
+    // Pets patch: байткод из build.rs (D3DCompile при сборке).
+    #[cfg(not(shaders_runtime))]
     include!(concat!(env!("OUT_DIR"), "/shaders_bytes.rs"));
 
-    #[cfg(all())]
+    #[cfg(shaders_runtime)]
     impl ShaderModule {
         pub fn as_str(self) -> &'static str {
             match self {
@@ -2063,5 +2064,39 @@ mod dxgi {
             (number >> 16) & 0xFFFF,
             number & 0xFFFF
         ))
+    }
+}
+
+// Pets patch: все шейдеры на месте (байткод из build.rs) и берутся мгновенно.
+#[cfg(test)]
+mod shader_time_tests {
+    use super::shader_resources::{RawShaderBytes, ShaderModule, ShaderTarget};
+
+    #[test]
+    fn shaders_are_embedded() {
+        let t = std::time::Instant::now();
+        let mut n = 0;
+        for m in [
+            ShaderModule::Quad,
+            ShaderModule::Shadow,
+            ShaderModule::Underline,
+            ShaderModule::PathRasterization,
+            ShaderModule::PathSprite,
+            ShaderModule::MonochromeSprite,
+            ShaderModule::SubpixelSprite,
+            ShaderModule::PolychromeSprite,
+            ShaderModule::EmojiRasterization,
+        ] {
+            for tg in [ShaderTarget::Vertex, ShaderTarget::Fragment] {
+                let s = std::time::Instant::now();
+                let b = RawShaderBytes::new(m, tg).expect("compile");
+                n += b.as_bytes().len();
+                eprintln!("{m:?} {tg:?}: {:?}", s.elapsed());
+            }
+        }
+        eprintln!("total {:?}, {n} bytes", t.elapsed());
+        assert!(n > 10_000);
+        #[cfg(not(shaders_runtime))]
+        assert!(t.elapsed() < std::time::Duration::from_millis(20), "{:?}", t.elapsed());
     }
 }
