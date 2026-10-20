@@ -9,15 +9,17 @@ gpui-pre-windows = { git = "https://github.com/Dicobraz/pets", rev = "<комм�
 ```
 
 Каталог исключён из рабочей области `pets` (чужой код со своим стилем и `Cargo.lock`). Наши правки помечены
-в коде «Postman patch» / «Postman:» (сделаны в Postman, фаза 0):
+в коде «Postman patch» / «Postman:» (сделаны в Postman, фаза 0) и «Pets patch» (сделаны здесь):
 
 | Патч | Файлы | Рецепт |
 |---|---|---|
 | Шейдеры встроены в exe, компилируются при запуске (сборка без fxc.exe, без путей машины сборки) | `build.rs`, `directx_renderer.rs` | — |
 | Кадры по запросу: поток vsync спит без запросов кадра | `vsync.rs`, `platform.rs`, `window.rs`, `events.rs` | `docs/recipes/frames-on-demand.md` |
 | Живой ресайз: кадр на `WM_SIZE` в цикле перетаскивания, swapchain окна с растяжением, DirectComposition выключена по умолчанию (`GPUI_DISABLE_DIRECT_COMPOSITION=0` — включить) | `events.rs`, `window.rs`, `directx_renderer.rs`, `platform.rs` | `docs/recipes/live-resize.md` |
+| Принудительный WARP (программный Direct3D): `GPUI_FORCE_WARP=1` — устройство создаётся на `EnumWarpAdapter`, без перебора GPU; читается раз за процесс, пересоздание после потери устройства — тоже на WARP | `directx_devices.rs` | — |
 
-Тесты нашей части: `cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support vsync`.
+Тесты нашей части: `cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support vsync`
+и `... force_warp`.
 
 При обновлении gpui-kit: взять новый `gpui-pre-windows` с crates.io, перенести помеченные правки, прогнать тесты,
 бенч и `resize-check` приложения. Кадры по запросу и живой ресайз — кандидаты в zed-industries/zed.

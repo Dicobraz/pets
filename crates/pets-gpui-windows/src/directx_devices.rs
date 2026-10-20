@@ -21,6 +21,18 @@ use windows::Win32::{
 };
 use windows::core::Interface;
 
+// Pets patch: принудительный WARP (программный Direct3D) — `GPUI_FORCE_WARP=1`. Переменная читается
+// один раз за процесс (при создании первого устройства), поэтому пересоздание после потери
+// устройства идёт на тот же адаптер.
+pub(crate) const FORCE_WARP: &str = "GPUI_FORCE_WARP";
+
+static FORCE_WARP_REQUESTED: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| force_warp_requested(std::env::var(FORCE_WARP).ok().as_deref()));
+
+fn force_warp_requested(value: Option<&str>) -> bool {
+    value.is_some_and(|value| value.trim() == "1")
+}
+
 pub(crate) fn try_to_recover_from_device_lost<T>(mut f: impl FnMut() -> Result<T>) -> Result<T> {
     (0..5)
         .map(|i| {
@@ -112,12 +124,30 @@ fn get_adapter(
     ID3D11DeviceContext,
     D3D_FEATURE_LEVEL,
 )> {
+    // Pets patch: при `GPUI_FORCE_WARP=1` — только WARP, без перебора аппаратных адаптеров.
+    if *FORCE_WARP_REQUESTED {
+        let adapter: IDXGIAdapter1 =
+            unsafe { dxgi_factory.EnumWarpAdapter() }.context("Getting WARP adapter")?;
+        log::info!(
+            "{FORCE_WARP}=1: using WARP adapter: {}",
+            adapter_name(&adapter).unwrap_or_default()
+        );
+        let mut context: Option<ID3D11DeviceContext> = None;
+        let mut feature_level = D3D_FEATURE_LEVEL::default();
+        let device = get_device(
+            &adapter,
+            Some(&mut context),
+            Some(&mut feature_level),
+            debug_layer_available,
+        )
+        .context("Creating Direct3D device on WARP adapter")?;
+        let context = context.context("WARP device returned no immediate context")?;
+        return Ok((adapter, device, context, feature_level));
+    }
+
     for adapter_index in 0.. {
         let adapter: IDXGIAdapter1 = unsafe { dxgi_factory.EnumAdapters(adapter_index)?.cast()? };
-        if let Ok(desc) = unsafe { adapter.GetDesc1() } {
-            let gpu_name = String::from_utf16_lossy(&desc.Description)
-                .trim_matches(char::from(0))
-                .to_string();
+        if let Some(gpu_name) = adapter_name(&adapter) {
             log::info!("Using GPU: {}", gpu_name);
         }
         // Check to see whether the adapter supports Direct3D 11 and create
@@ -137,6 +167,16 @@ fn get_adapter(
     }
 
     unreachable!()
+}
+
+// Pets patch: имя адаптера вынесено из `get_adapter`, чтобы логировать и WARP.
+fn adapter_name(adapter: &IDXGIAdapter1) -> Option<String> {
+    let desc = unsafe { adapter.GetDesc1() }.ok()?;
+    Some(
+        String::from_utf16_lossy(&desc.Description)
+            .trim_matches(char::from(0))
+            .to_string(),
+    )
 }
 
 #[inline]
@@ -190,5 +230,21 @@ fn get_device(
         Err(anyhow::anyhow!(
             "Required feature StructuredBuffer is not supported by GPU/driver"
         ))
+    }
+}
+
+// Pets patch: разбор значения `GPUI_FORCE_WARP`.
+#[cfg(test)]
+mod force_warp_tests {
+    use super::force_warp_requested;
+
+    #[test]
+    fn force_warp_only_for_one() {
+        assert!(force_warp_requested(Some("1")));
+        assert!(force_warp_requested(Some(" 1 ")));
+        assert!(!force_warp_requested(None));
+        assert!(!force_warp_requested(Some("")));
+        assert!(!force_warp_requested(Some("0")));
+        assert!(!force_warp_requested(Some("true")));
     }
 }
