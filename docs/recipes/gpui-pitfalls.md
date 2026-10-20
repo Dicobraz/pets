@@ -65,4 +65,16 @@
   наведении на кнопку развёртывания» — перед погоней за «багом» проверить реестр (`Themes\Personalize`,
   `Explorer\Advanced`).
 
-**Откуда.** Урфин, переезд на gpui (ADR-0018, G-01…G-07), 2026-10-19…20.
+**Откуда.** Урфин, переезд на gpui (ADR-0018, G-01…G-07); Postman (S2), 2026-10-19…20.
+- В Rust 1.99 `gpui::Window::window_handle()` (свой метод) затеняет `raw_window_handle::HasWindowHandle` —
+  звать явно `HasWindowHandle::window_handle(window)`.
+- `PrintWindow` своего окна — не с UI-потока (там он реентерабельно зовёт wndproc gpui посреди render):
+  `cx.background_spawn` с HWND как `isize`, ждать в `cx.spawn`. С выключенной DirectComposition
+  `PW_RENDERFULLCONTENT` снимает содержимое (Postman S2-05, `--screens`).
+- `border` — один цвет на все стороны: цветной маркер слева — отдельным абсолютным дочерним `div`
+  (тосты `pets-ui`).
+- Fluent: `bundle.set_use_isolating(false)`, иначе U+2068/U+2069 рисуются «тофу» (`pets-i18n`).
+
+- Журнал событий с незарегистрированным источником (без админа): `Get-WinEvent -FilterHashtable
+  @{ProviderName=…}` падает «нет провайдера» — `-FilterXPath "*[System[Provider[@Name='X']]]"`, текст —
+  в `.Properties`, не `.Message` (рецепт pets-shell).
