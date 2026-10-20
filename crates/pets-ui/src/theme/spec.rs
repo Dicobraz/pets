@@ -4,7 +4,7 @@
 //! name = "Моя тема"          # название в списке; нет — id (имя файла)
 //! appearance = "dark"         # light | dark: тема только такая; нет — светлая/тёмная как в ОС
 //! accent = "system"           # system | "#RRGGBB": от него считаются роли accent.*
-//! density = 24                # 20 | 24 | 28
+//! density = 24                # 20 | 24 | 28 | 32
 //! [tokens.light]              # роли светлого варианта, как `[ui.tokens.light]` Урфина
 //! "accent.fill" = "#0067C0"
 //! [tokens.dark]

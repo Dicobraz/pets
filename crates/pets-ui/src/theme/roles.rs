@@ -113,7 +113,7 @@ metrics! {
     TypeMono = "type.mono",
 }
 
-/// Плотность строк: высота строки списка 20 / 24 / 28 px, по умолчанию 24 (базис Pets).
+/// Плотность строк: высота строки списка 20 / 24 / 28 / 32 px, по умолчанию 24 (базис Pets; 32 — «стандарт» Урфина).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub enum Density {
     /// 20 px.
@@ -123,10 +123,17 @@ pub enum Density {
     Normal,
     /// 28 px.
     Comfortable,
+    /// 32 px: строка и элементы управления выше, отступы — как у [`Density::Normal`] (Урфин, S2).
+    Spacious,
 }
 
 impl Density {
-    pub const ALL: [Density; 3] = [Density::Compact, Density::Normal, Density::Comfortable];
+    pub const ALL: [Density; 4] = [
+        Density::Compact,
+        Density::Normal,
+        Density::Comfortable,
+        Density::Spacious,
+    ];
 
     /// Высота строки, px — и значение `density` в TOML.
     pub const fn row(self) -> u16 {
@@ -134,6 +141,7 @@ impl Density {
             Density::Compact => 20,
             Density::Normal => 24,
             Density::Comfortable => 28,
+            Density::Spacious => 32,
         }
     }
 
@@ -141,11 +149,11 @@ impl Density {
         Density::ALL.into_iter().find(|d| i64::from(d.row()) == px)
     }
 
-    /// Шкала отступов `space.xxs … space.xxl`: верх шкалы равен высоте строки.
+    /// Шкала отступов `space.xxs … space.xxl`: верх шкалы равен высоте строки (у [`Density::Spacious`] — как у обычной).
     pub const fn spacing(self) -> [f32; 7] {
         match self {
             Density::Compact => [2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 20.0],
-            Density::Normal => [2.0, 4.0, 8.0, 12.0, 16.0, 20.0, 24.0],
+            Density::Normal | Density::Spacious => [2.0, 4.0, 8.0, 12.0, 16.0, 20.0, 24.0],
             Density::Comfortable => [2.0, 6.0, 10.0, 14.0, 20.0, 24.0, 28.0],
         }
     }
@@ -170,7 +178,7 @@ pub(crate) fn metrics(density: Density, fonts: FontSizes) -> [f32; Metric::COUNT
     let [xxs, xs, s, m, l, xl, xxl] = density.spacing();
     let pad = match density {
         Density::Compact => 8.0,
-        Density::Normal => 12.0,
+        Density::Normal | Density::Spacious => 12.0,
         Density::Comfortable => 16.0,
     };
     let body = fonts.body.clamp(8.0, 32.0);

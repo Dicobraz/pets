@@ -202,7 +202,7 @@ type.mono              13
 #[test]
 fn density_scale() {
     let rows: Vec<u16> = Density::ALL.iter().map(|d| d.row()).collect();
-    assert_eq!(rows, [20, 24, 28]);
+    assert_eq!(rows, [20, 24, 28, 32]);
     assert_eq!(Density::default(), Density::Normal);
     for d in Density::ALL {
         assert_eq!(Density::from_row(i64::from(d.row())), Some(d));
@@ -216,13 +216,18 @@ fn density_scale() {
         assert_eq!(t.m(Metric::HControl), row);
         assert_eq!(t.m(Metric::HMenuItem), row + 4.0);
         assert_eq!(t.m(Metric::HTab), row + 8.0);
-        assert_eq!(t.m(Metric::SpaceXxl), row, "top of the spacing scale is the row height");
+        let top = if d == Density::Spacious { 24.0 } else { row };
+        assert_eq!(
+            t.m(Metric::SpaceXxl),
+            top,
+            "top of the spacing scale is the row height (Spacious: as Normal)"
+        );
         assert_eq!(t.m(Metric::HTitlebar), 40.0, "title bar does not depend on density");
         let space = d.spacing();
         assert!(space.windows(2).all(|w| w[0] < w[1]), "{d:?}: {space:?}");
         assert!(space.iter().all(|v| (v * 10.0).fract() == 0.0), "≤ 1 decimal");
     }
-    assert_eq!(Density::from_row(32), None);
+    assert_eq!(Density::from_row(30), None);
     let small = Density::Compact.spacing();
     let big = Density::Comfortable.spacing();
     assert!(small.iter().zip(big).all(|(s, b)| *s <= b));
@@ -340,7 +345,7 @@ fn nested_tables_are_flattened() {
 fn validation_errors_list_every_problem() {
     let text = r##"
 colour = "red"
-density = 32
+density = 30
 appearance = "sepia"
 accent = "blue"
 [tokens.light]
@@ -369,7 +374,7 @@ accent = "blue"
             Issue::UnknownKey("colour".into()),
             Issue::BadValue {
                 key: "density",
-                value: "32".into()
+                value: "30".into()
             },
             Issue::BadColor {
                 table: "light",
@@ -601,4 +606,17 @@ fn no_raw_ui_strings() {
     for (file, src) in sources {
         assert_eq!(pets_i18n::raw_strings(src), vec![], "{file}");
     }
+}
+
+/// Урфин: «стандарт» 32 px — строка и элементы управления 32, отступы как при 24.
+#[test]
+fn spacious_is_urfin_standard() {
+    assert_eq!(Density::Spacious.row(), 32);
+    assert_eq!(Density::Spacious.spacing(), Density::Normal.spacing());
+    assert_eq!(Density::from_row(32), Some(Density::Spacious));
+    let m = super::roles::metrics(Density::Spacious, Default::default());
+    let n = super::roles::metrics(Density::Normal, Default::default());
+    let at = |metrics: &[f32], metric: Metric| metrics[Metric::ALL.iter().position(|x| *x == metric).expect("metric")];
+    assert_eq!((at(&m, Metric::HRow), at(&m, Metric::HControl)), (32.0, 32.0));
+    assert_eq!(at(&m, Metric::SpaceL), at(&n, Metric::SpaceL));
 }
