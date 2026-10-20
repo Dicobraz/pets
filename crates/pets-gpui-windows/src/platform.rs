@@ -798,6 +798,10 @@ impl Platform for WindowsPlatform {
             frame_signal: window.state.frame_signal.clone(),
             frame_request: window.state.frame_request.clone(),
         });
+        // Pets patch: окно рождается с запрошенным кадром (`FrameRequest::new_requested`), но
+        // `request()` будит поток vsync только при переходе флага — без этого он спал до
+        // `IDLE_VSYNC_CHECK` (1 с), и первую секунду окно не обновлялось (Урфин, G-07).
+        FRAME_DEMAND.notify();
 
         Ok(Box::new(window))
     }
