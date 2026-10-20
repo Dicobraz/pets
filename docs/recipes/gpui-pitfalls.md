@@ -150,3 +150,12 @@
   тесты и чек-лист ручной проверки владельцу.
 - Мерж цепочки PR: следующую ветку сливать с `main` (`-X ours` только при проверке `git diff <старая голова>`
   пустым), удалять ветку — только после того, как PR смержен (удаление головы закрывает PR).
+
+**Темы pets-ui (2026-10-21):**
+- `observe_window_appearance` (и `window.appearance()`) у Windows-платформы gpui меняется только при смене
+  светлая ↔ тёмная: на `ImmersiveColorSet` gpui сравнивает вид и молчит, если он прежний (смена акцента), а
+  высокая контрастность приходит `WM_SETTINGCHANGE` с `SPI_SETHIGHCONTRAST`, не `ImmersiveColorSet`. Акцент и
+  контрастность — своим потоком (`RegNotifyChangeKeyValue`), рецепт «Темы оформления».
+- `cx.refresh_windows()` перерисовывает и закэшированные view (`window.refreshing` отключает повтор кэша) —
+  то, что нужно после смены темы; `notify` каждой view не нужен.
+- `cx.update_global` — метод трейта `BorrowAppContext`: без `use gpui::BorrowAppContext` его «нет у `App`».
