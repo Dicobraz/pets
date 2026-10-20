@@ -521,8 +521,12 @@ impl DirectXRenderer {
             // Pets patch: the path sprite pass leaves the path texture bound to slot 0; unbind it so the old
             // window-sized textures are freed now, not on the next textured draw.
             unsafe {
-                devices.device_context.VSSetShaderResources(0, Some(&[None]));
-                devices.device_context.PSSetShaderResources(0, Some(&[None]));
+                devices
+                    .device_context
+                    .VSSetShaderResources(0, Some(&[None]));
+                devices
+                    .device_context
+                    .PSSetShaderResources(0, Some(&[None]));
             }
         }
 
@@ -648,6 +652,7 @@ impl DirectXRenderer {
         let devices = self.devices.as_ref().context("devices missing")?;
         let resources = self.resources.as_mut().context("resources missing")?;
         if resources.path_textures.is_none() {
+            log::debug!("path textures {}x{}", self.width, self.height);
             resources.path_textures =
                 Some(PathTextures::new(&devices.device, self.width, self.height)?);
         }
@@ -658,15 +663,13 @@ impl DirectXRenderer {
             .context("path textures missing")?;
         // Clear intermediate MSAA texture
         unsafe {
-            devices.device_context.ClearRenderTargetView(
-                path_textures.msaa_view.as_ref().unwrap(),
-                &[0.0; 4],
-            );
+            devices
+                .device_context
+                .ClearRenderTargetView(path_textures.msaa_view.as_ref().unwrap(), &[0.0; 4]);
             // Set intermediate MSAA texture as render target
-            devices.device_context.OMSetRenderTargets(
-                Some(slice::from_ref(&path_textures.msaa_view)),
-                None,
-            );
+            devices
+                .device_context
+                .OMSetRenderTargets(Some(slice::from_ref(&path_textures.msaa_view)), None);
         }
 
         // Collect all vertices and sprites for a single draw call
@@ -2101,6 +2104,133 @@ mod shader_time_tests {
         eprintln!("total {:?}, {n} bytes", t.elapsed());
         assert!(n > 10_000);
         #[cfg(not(shaders_runtime))]
-        assert!(t.elapsed() < std::time::Duration::from_millis(20), "{:?}", t.elapsed());
+        assert!(
+            t.elapsed() < std::time::Duration::from_millis(20),
+            "{:?}",
+            t.elapsed()
+        );
+    }
+}
+
+// Pets patch: path intermediate textures are created lazily and dropped on resize.
+#[cfg(test)]
+mod lazy_path_tests {
+    use super::DirectXRenderer;
+    use crate::directx_devices::DirectXDevices;
+    use gpui::{
+        Bounds, ContentMask, DevicePixels, Path, Scene, WindowBackgroundAppearance, point, px, rgb,
+        size,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DestroyWindow, WINDOW_EX_STYLE, WS_OVERLAPPEDWINDOW,
+    };
+    use windows::core::w;
+
+    /// A filled red square, `x0..x1` × `y0..y1` (logical = device pixels at scale 1).
+    fn square_scene(x0: f32, y0: f32, x1: f32, y1: f32) -> Scene {
+        let mut path = Path::new(point(px(x0), px(y0)));
+        path.line_to(point(px(x1), px(y0)));
+        path.line_to(point(px(x1), px(y1)));
+        path.line_to(point(px(x0), px(y1)));
+        path.color = rgb(0xff0000).into();
+        path.content_mask = ContentMask {
+            bounds: Bounds::new(point(px(0.), px(0.)), size(px(4096.), px(4096.))),
+        };
+        let mut scene = Scene::default();
+        scene.insert_primitive(path.scale(1.0));
+        scene.finish();
+        scene
+    }
+
+    fn is_red(image: &image::RgbaImage, x: u32, y: u32) -> bool {
+        let p = image.get_pixel(x, y).0;
+        p[0] > 200 && p[1] < 60 && p[2] < 60
+    }
+
+    #[test]
+    fn lazy_path_textures_follow_paths_and_size() -> anyhow::Result<()> {
+        // A hidden window: the swap chain needs an HWND, nothing is shown.
+        let hwnd = unsafe {
+            CreateWindowExW(
+                WINDOW_EX_STYLE(0),
+                w!("STATIC"),
+                w!("lazy path textures test"),
+                WS_OVERLAPPEDWINDOW,
+                0,
+                0,
+                200,
+                200,
+                None,
+                None,
+                None,
+                None,
+            )
+        }?;
+        let devices = DirectXDevices::new()?;
+        let mut renderer = DirectXRenderer::new(hwnd, &devices, true)?;
+        let has_textures = |r: &DirectXRenderer| {
+            r.resources
+                .as_ref()
+                .is_some_and(|r| r.path_textures.is_some())
+        };
+
+        renderer.resize(size(DevicePixels(64), DevicePixels(64)))?;
+        assert!(
+            !has_textures(&renderer),
+            "no textures before the first path"
+        );
+
+        // A frame without paths does not create them.
+        let mut empty = Scene::default();
+        empty.finish();
+        renderer.render_to_image(&empty, WindowBackgroundAppearance::Opaque)?;
+        assert!(
+            !has_textures(&renderer),
+            "a frame without paths creates no textures"
+        );
+
+        // The first frame with paths creates them and draws the path.
+        let image = renderer.render_to_image(
+            &square_scene(10., 10., 50., 50.),
+            WindowBackgroundAppearance::Opaque,
+        )?;
+        assert!(
+            has_textures(&renderer),
+            "a frame with paths creates the textures"
+        );
+        assert!(
+            is_red(&image, 30, 30),
+            "path drawn: {:?}",
+            image.get_pixel(30, 30)
+        );
+        assert!(
+            !is_red(&image, 5, 5),
+            "outside the path: {:?}",
+            image.get_pixel(5, 5)
+        );
+
+        // Resize drops them; the next path frame recreates them at the new size.
+        renderer.resize(size(DevicePixels(160), DevicePixels(120)))?;
+        assert!(!has_textures(&renderer), "resize drops the textures");
+        let image = renderer.render_to_image(
+            &square_scene(100., 70., 150., 110.),
+            WindowBackgroundAppearance::Opaque,
+        )?;
+        assert!(has_textures(&renderer));
+        assert_eq!((image.width(), image.height()), (160, 120));
+        assert!(
+            is_red(&image, 125, 90),
+            "path beyond the old size: {:?}",
+            image.get_pixel(125, 90)
+        );
+        assert!(
+            !is_red(&image, 30, 30),
+            "the old frame is gone: {:?}",
+            image.get_pixel(30, 30)
+        );
+
+        drop(renderer);
+        unsafe { DestroyWindow(hwnd) }?;
+        Ok(())
     }
 }

@@ -19,8 +19,8 @@ gpui-pre-windows = { git = "https://github.com/Dicobraz/pets", rev = "<комм�
 | Ленивые текстуры путей: промежуточные текстуры путей (обычная + MSAA 4×, размером с окно) создаются в первом кадре с путями и сбрасываются при ресайзе — окно без путей не держит ~33 МБ (1600×1000), ресайз не копит остатки | `directx_renderer.rs` | `docs/recipes/gpui-pitfalls.md` (Память) |
 | Принудительный WARP (программный Direct3D): `GPUI_FORCE_WARP=1` — устройство создаётся на `EnumWarpAdapter`, без перебора GPU; читается раз за процесс, пересоздание после потери устройства — тоже на WARP | `directx_devices.rs` | — |
 
-Тесты нашей части: `cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support vsync`
-и `... force_warp`.
+Тесты нашей части: `cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support -- vsync force_warp lazy_path`
+(`lazy_path` рисует путь в скрытом окне через `render_to_image` и проверяет пиксели до и после ресайза).
 
 При обновлении gpui-kit: взять новый `gpui-pre-windows` с crates.io, перенести помеченные правки, прогнать тесты,
 бенч и `resize-check` приложения. Кадры по запросу и живой ресайз — кандидаты в zed-industries/zed.

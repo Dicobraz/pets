@@ -34,4 +34,4 @@ jobs:
         with:
           workspaces: crates/pets-gpui-windows
       - name: Тесты наших правок
-        run: cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support vsync
+        run: cargo test --manifest-path crates/pets-gpui-windows/Cargo.toml --lib --features test-support -- vsync force_warp lazy_path
