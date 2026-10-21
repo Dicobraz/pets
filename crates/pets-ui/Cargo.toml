@@ -27,3 +27,11 @@ windows-sys = { workspace = true, features = [
 
 [lints]
 workspace = true
+
+# Пример `image_check` (картинки Windows-платформы gpui): снимок PrintWindow и PNG.
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+raw-window-handle = "0.6"
+
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_Xps"] }
