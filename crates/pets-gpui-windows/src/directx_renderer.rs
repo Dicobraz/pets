@@ -2234,3 +2234,152 @@ mod lazy_path_tests {
         Ok(())
     }
 }
+
+// Pets: images larger than the 1024 atlas page and images clipped by a content mask draw correctly (a check
+// after Postman S5-07 blamed the renderer for an `img` layout trap — `docs/recipes/gpui-pitfalls.md`, «Картинки»).
+#[cfg(test)]
+mod image_sprite_tests {
+    use super::DirectXRenderer;
+    use crate::directx_devices::DirectXDevices;
+    use gpui::{
+        AtlasKey, AtlasTile, Bounds, ContentMask, Corners, DevicePixels, ImageId, PolychromeSprite,
+        RenderImageParams, ScaledPixels, Scene, Size, WindowBackgroundAppearance, point, size,
+    };
+    use std::borrow::Cow;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DestroyWindow, WINDOW_EX_STYLE, WS_OVERLAPPEDWINDOW,
+    };
+    use windows::core::w;
+
+    /// BGRA "coordinate" gradient: R = x % 256, G = y % 256, B = (x / 256) * 16 + y / 256.
+    fn gradient(size: Size<DevicePixels>) -> Vec<u8> {
+        let (w, h) = (size.width.0, size.height.0);
+        let mut v = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                v.extend_from_slice(&[
+                    ((x / 256) * 16 + y / 256) as u8,
+                    (y % 256) as u8,
+                    (x % 256) as u8,
+                    255,
+                ]);
+            }
+        }
+        v
+    }
+
+    /// The image pixel a rendered RGBA pixel shows (inverse of [`gradient`]).
+    fn decode(image: &image::RgbaImage, x: u32, y: u32) -> (i32, i32) {
+        let [r, g, b, _] = image.get_pixel(x, y).0.map(i32::from);
+        ((b >> 4) * 256 + r, (b & 15) * 256 + g)
+    }
+
+    fn sbounds(x: f32, y: f32, w: f32, h: f32) -> Bounds<ScaledPixels> {
+        Bounds::new(
+            point(ScaledPixels(x), ScaledPixels(y)),
+            size(ScaledPixels(w), ScaledPixels(h)),
+        )
+    }
+
+    fn insert(renderer: &DirectXRenderer, id: usize, image: Size<DevicePixels>) -> AtlasTile {
+        let bytes = gradient(image);
+        renderer
+            .sprite_atlas()
+            .get_or_insert_with(
+                AtlasKey::Image(RenderImageParams {
+                    image_id: ImageId(id),
+                    frame_index: 0,
+                }),
+                &mut || Ok(Some((image, Cow::Borrowed(bytes.as_slice())))),
+            )
+            .expect("atlas insert")
+            .expect("tile")
+    }
+
+    fn scene(tile: AtlasTile, bounds: Bounds<ScaledPixels>, mask: Bounds<ScaledPixels>) -> Scene {
+        let mut scene = Scene::default();
+        scene.insert_primitive(PolychromeSprite {
+            order: 0,
+            pad: 0,
+            grayscale: false.into(),
+            opacity: 1.0,
+            bounds,
+            content_mask: ContentMask { bounds: mask },
+            corner_radii: Corners::default(),
+            tile,
+        });
+        scene.finish();
+        scene
+    }
+
+    #[test]
+    fn large_and_clipped_images_draw_the_right_pixels() -> anyhow::Result<()> {
+        let hwnd = unsafe {
+            CreateWindowExW(
+                WINDOW_EX_STYLE(0),
+                w!("STATIC"),
+                w!("image sprite test"),
+                WS_OVERLAPPEDWINDOW,
+                0,
+                0,
+                200,
+                200,
+                None,
+                None,
+                None,
+                None,
+            )
+        }?;
+        let devices = DirectXDevices::new()?;
+        let mut renderer = DirectXRenderer::new(hwnd, &devices, true)?;
+        renderer.resize(size(DevicePixels(2000), DevicePixels(1400)))?;
+
+        // A small image first: the polychrome atlas gets its default 1024 × 1024 page.
+        let small = insert(&renderer, 1, size(DevicePixels(600), DevicePixels(400)));
+        // 2000 × 1400 does not fit that page: the atlas adds a page of the image's size.
+        let big = insert(&renderer, 2, size(DevicePixels(2000), DevicePixels(1400)));
+        assert_ne!(small.texture_id, big.texture_id);
+
+        let full = sbounds(0., 0., 2000., 1400.);
+        let image = renderer
+            .render_to_image(&scene(big, full, full), WindowBackgroundAppearance::Opaque)?;
+        for (x, y) in [(10, 10), (1500, 1000), (1999, 1399)] {
+            assert_eq!(
+                decode(&image, x, y),
+                (x as i32, y as i32),
+                "big image at ({x}, {y})"
+            );
+        }
+
+        // Scaled down to half: still drawn, pixel (x, y) shows image pixel (2x, 2y).
+        let half = sbounds(0., 0., 1000., 700.);
+        let image = renderer
+            .render_to_image(&scene(big, half, full), WindowBackgroundAppearance::Opaque)?;
+        let (x, y) = decode(&image, 700, 500);
+        assert!(
+            (x - 1400).abs() <= 2 && (y - 1000).abs() <= 2,
+            "half-size big image: ({x}, {y})"
+        );
+
+        // Clipped by the top edge of a scroll area: the image starts 300 px above, the mask is 0..100.
+        let image = renderer.render_to_image(
+            &scene(
+                small,
+                sbounds(0., -300., 600., 400.),
+                sbounds(0., 0., 600., 100.),
+            ),
+            WindowBackgroundAppearance::Opaque,
+        )?;
+        assert_eq!(decode(&image, 10, 10), (10, 310));
+        assert_eq!(decode(&image, 300, 99), (300, 399));
+        assert_eq!(
+            image.get_pixel(10, 150).0,
+            [255, 255, 255, 255],
+            "outside the mask"
+        );
+
+        drop(renderer);
+        unsafe { DestroyWindow(hwnd) }?;
+        Ok(())
+    }
+}
